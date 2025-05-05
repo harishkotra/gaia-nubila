@@ -10,6 +10,7 @@ const PORT = process.env.PORT || 3000;
 const NUBILA_API_KEY = process.env.NUBILA_API_KEY;
 const GAIA_API_ENDPOINT = process.env.GAIA_API_ENDPOINT;
 const GAIA_API_KEY = process.env.GAIA_API_KEY;
+const GAIA_MODEL_NAME = process.env.GAIA_MODEL_NAME;
 
 if (!NUBILA_API_KEY) {
     console.error("Error: NUBILA_API_KEY is not defined in .env file.");
