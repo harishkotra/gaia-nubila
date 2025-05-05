@@ -4,6 +4,11 @@ This simple web application allows you to check the current weather or forecast 
 
 It leverages the **Gaia Language Model** (via an OpenAI compatible endpoint) to understand your request and the **Nubila Weather API** to fetch the actual weather data.
 
+![image](https://github.com/user-attachments/assets/ec83b1fc-5749-43de-ba9d-093bd315d54e)
+
+https://github.com/user-attachments/assets/6d44605a-9d0f-4d57-b627-94ae5b459e77
+
+
 ## Features
 
 *   Get current weather or forecasts using plain English.
