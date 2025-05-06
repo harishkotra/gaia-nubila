@@ -8,6 +8,9 @@ It leverages the **Gaia Language Model** (via an OpenAI compatible endpoint) to 
 
 https://github.com/user-attachments/assets/6d44605a-9d0f-4d57-b627-94ae5b459e77
 
+![image](https://github.com/user-attachments/assets/246d6358-1d48-4c70-a7ed-1c051ea767b4)
+
+https://github.com/user-attachments/assets/0dd64064-a2de-4acc-9987-d9e334e01fec
 
 ## Features
 
