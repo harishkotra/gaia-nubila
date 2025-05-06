@@ -90,6 +90,30 @@ function displayWeatherData(result) {
 
     const { requestDetails, weatherData } = result;
 
+    // const thoughtfulResponse = document.createElement('div');
+    // thoughtfulResponse.className = 'card thoughtful-response';
+    // thoughtfulResponse.innerHTML = `
+        
+    //         ${result.friendlyAdvice.split('\n\n').map(section => {
+    //             const lines = section.split('\n');
+    //             const heading = lines[0];
+    //             const details = lines.slice(1).map(line => `<p>${line}</p>`).join('');
+    //             return `<h3>${heading}</h3>${details}`;
+    //         }).join('')}
+        
+
+    // `;
+    const thoughtfulResponse = document.createElement('div');
+    thoughtfulResponse.className = 'card thoughtful-response';
+    thoughtfulResponse.innerHTML = `
+        
+            ${result.friendlyAdvice.split('\n').map(advice => `<p>${advice}</p>`).join('')}
+        
+
+    `;
+
+    resultsDiv.appendChild(thoughtfulResponse);
+
     const toolCallCard = document.createElement('div');
     toolCallCard.className = 'card tool-call-card';
 
@@ -112,7 +136,6 @@ function displayWeatherData(result) {
        resultsDiv.appendChild(toolCallCard);
     }
 
-    // Display Interpretation Card (Keep this as is)
     const interpretationCard = document.createElement('div');
     interpretationCard.className = 'card interpretation-card';
     interpretationCard.innerHTML = `

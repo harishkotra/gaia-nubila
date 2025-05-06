@@ -34,7 +34,7 @@ app.use(cors()); // Allow requests from frontend
 app.use(express.json()); // Parse JSON request bodies
 app.use(express.static('public')); // Serve static files from 'public' directory
 
-// Function to call Gaia API
+// Function to call Gaia API for query analysis
 async function analyzeQueryWithGaia(query) {
     console.log(`Querying Gaia for: "${query}"`);
     const prompt = `
@@ -60,9 +60,9 @@ JSON Response:
                 'Authorization': `Bearer ${GAIA_API_KEY}`
             },
             body: JSON.stringify({
-                model: `${GAIA_MODEL_NAME}`, // Or appropriate model for the endpoint
+                model: `${GAIA_MODEL_NAME}`,
                 messages: [{ role: "user", content: prompt }],
-                temperature: 0.2, // Low temperature for deterministic results
+                temperature: 0.2,
                 max_tokens: 150
             })
         });
@@ -107,7 +107,6 @@ JSON Response:
                  analysis.latitude = analysis.latitude || null; // Ensure null if invalid
                  analysis.longitude = analysis.longitude || null; // Ensure null if invalid
              }
-
 
             return analysis;
         } catch (parseError) {
@@ -156,6 +155,114 @@ async function getNubilaWeather(lat, lon, type = 'current') {
     }
 }
 
+// NEW FUNCTION: Use Gaia to generate personalized weather advice
+async function generateLLMWeatherAdvice(weatherData, locationName, requestType, originalQuery) {
+    console.log("Weather data received:", JSON.stringify(weatherData, null, 2));
+    
+    // Handle the structure based on the actual API response
+    let currentData;
+    let forecast = null;
+    
+    // Check if the response contains 'data' array (forecast) or a single object (current)
+    if (Array.isArray(weatherData.data)) {
+        // This is the forecast format with array of entries
+        currentData = weatherData.data[0]; // Use the first entry as current
+        forecast = weatherData.data.slice(1); // Rest are forecast entries
+    } else {
+        // This might be the current weather format
+        currentData = weatherData.data;
+    }
+    
+    // Create a detailed weather context for the LLM to work with
+    let weatherContext = {
+        location: locationName,
+        current: {
+            temperature: currentData.temperature || currentData.temp,
+            feelsLike: currentData.feels_like,
+            condition: currentData.condition,
+            description: currentData.condition_desc,
+            windSpeed: currentData.wind_speed,
+            humidity: currentData.humidity,
+            uvIndex: currentData.uv || 0,
+            isDay: true // Default to day since we don't have sunrise/sunset data
+        }
+    };
+    
+    // Add forecast data if available
+    if (forecast && forecast.length > 0) {
+        weatherContext.forecast = {
+            tomorrow: {
+                condition: forecast[0].condition,
+                description: forecast[0].condition_desc,
+                tempMin: forecast[0].temperature_min,
+                tempMax: forecast[0].temperature_max,
+                humidity: forecast[0].humidity
+            }
+        };
+    }
+    
+    // Stringify the weather data for the prompt
+    const weatherContextJSON = JSON.stringify(weatherContext, null, 2);
+    
+    const prompt = `
+You are a friendly, thoughtful weather assistant. Based on the weather data provided, create personalized advice and recommendations for the user who asked: "${originalQuery}"
+
+Weather data:
+${weatherContextJSON}
+
+Respond with thoughtful, sweet advice that includes:
+1. A warm, personalized greeting mentioning the location
+2. Appropriate clothing suggestions based on the weather
+3. Activity recommendations that would be enjoyable in these conditions
+4. Health tips related to the weather (hydration, sun protection, etc.)
+5. A mood suggestion (music, mindset) that pairs well with this weather
+6. If forecast data is available, a brief mention of tomorrow's weather
+
+Make your response conversational, friendly, and include relevant emojis. Your advice should be both practical and uplifting.
+
+Response:
+`;
+
+    try {
+        //console.log("Generating LLM weather advice");
+        const response = await fetch(GAIA_API_ENDPOINT, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${GAIA_API_KEY}`
+            },
+            body: JSON.stringify({
+                model: `${GAIA_MODEL_NAME}`,
+                messages: [{ role: "user", content: prompt }],
+                temperature: 0.7, // Slightly higher temperature for more creative responses
+                max_tokens: 500
+            })
+        });
+
+        if (!response.ok) {
+            const errorBody = await response.text();
+            console.error(`Gaia API Error for weather advice (${response.status}): ${errorBody}`);
+            throw new Error(`Gaia API request failed with status ${response.status}`);
+        }
+
+        const data = await response.json();
+        const advice = data.choices[0]?.message?.content;
+        
+        if (!advice) {
+            console.error("Gaia response missing content for weather advice:", data);
+            throw new Error('Invalid response format from Gaia for weather advice: No content.');
+        }
+
+        //console.log("Generated weather advice:", advice);
+        return advice;
+
+    } catch (error) {
+        console.error("Error generating weather advice with Gaia:", error);
+        // Return a fallback message if LLM fails
+        return `Weather for ${locationName}: ${currentData.condition_desc}, ${currentData.temperature || currentData.temp}°C (feels like ${currentData.feels_like}°C). Take care and have a wonderful day!`;
+    }
+}
+
 app.post('/api/weather-info', async (req, res) => {
     const { query } = req.body;
 
@@ -173,12 +280,21 @@ app.post('/api/weather-info', async (req, res) => {
 
         // 2. Get weather from Nubila based on analysis
         const weatherData = await getNubilaWeather(analysis.latitude, analysis.longitude, analysis.requestType);
+        
+        // 3. Generate thoughtful and sweet advice using LLM
+        const friendlyAdvice = await generateLLMWeatherAdvice(
+            weatherData, 
+            analysis.locationName, 
+            analysis.requestType,
+            query
+        );
 
-        // 3. Send successful response back to frontend
+        // 4. Send enhanced response back to frontend
         res.json({
             ok: true,
             requestDetails: analysis,
-            weatherData: weatherData
+            weatherData: weatherData,
+            friendlyAdvice: friendlyAdvice
         });
 
     } catch (error) {
